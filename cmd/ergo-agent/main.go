@@ -1,0 +1,266 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+var agentNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+func main() {
+	if len(os.Args) < 2 || os.Args[1] != "new" {
+		fmt.Fprintln(os.Stderr, "usage: ergo-agent new --name <name> --role sub|meta [options]")
+		os.Exit(2)
+	}
+	if err := runNew(os.Args[2:]); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func runNew(arguments []string) error {
+	flags := flag.NewFlagSet("new", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	name := flags.String("name", "", "Agent name")
+	role := flags.String("role", "", "Agent role: sub or meta")
+	output := flags.String("output", "", "Output directory (default: ./<name>)")
+	module := flags.String("module", "", "Go module path (app mode)")
+	tools := flags.String("tools", "read, grep, find, ls", "Comma-separated Agent tools")
+	model := flags.String("model", "", "Optional default model")
+	license := flags.String("license", "AGPL-3.0-only", "Generated package license")
+	packageOnly := flags.Bool("package-only", false, "Generate only a declarative Agent Package")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	*name, *role = strings.TrimSpace(*name), strings.TrimSpace(*role)
+	if !agentNamePattern.MatchString(*name) {
+		return errors.New("--name must use letters, digits, dot, underscore, or hyphen")
+	}
+	if *role != "sub" && *role != "meta" {
+		return errors.New("--role must be sub or meta")
+	}
+	if *output == "" {
+		*output = *name
+	}
+	if *module == "" {
+		*module = "example.com/" + *name
+	}
+	toolNames := normalizedList(*tools)
+	if len(toolNames) == 0 {
+		return errors.New("--tools must contain at least one tool")
+	}
+	destination, err := filepath.Abs(*output)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(destination); err == nil {
+		return fmt.Errorf("output already exists: %s", destination)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
+		return err
+	}
+	staging, err := os.MkdirTemp(filepath.Dir(destination), ".ergo-agent-new-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(staging)
+
+	resourceRoot := staging
+	if !*packageOnly {
+		resourceRoot = filepath.Join(staging, "resources")
+	}
+	if err := writeResources(resourceRoot, *name, *role, *model, *license, toolNames); err != nil {
+		return err
+	}
+	if !*packageOnly {
+		if err := writeApp(staging, *name, *role, *module, *license, toolNames); err != nil {
+			return err
+		}
+	}
+	if err := os.Rename(staging, destination); err != nil {
+		return err
+	}
+	fmt.Printf("Created %s Agent at %s\n", *role, destination)
+	return nil
+}
+
+func writeResources(root, name, role, model, license string, tools []string) error {
+	if err := os.MkdirAll(filepath.Join(root, "agents"), 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(root, "prompts", "system"), 0755); err != nil {
+		return err
+	}
+	profile := "---\n" +
+		"name: " + strconv.Quote(name) + "\n" +
+		"description: " + strconv.Quote("Standalone "+role+" Agent "+name) + "\n" +
+		"role: " + role + "\n" +
+		"tools: " + strings.Join(tools, ", ") + "\n"
+	if strings.TrimSpace(model) != "" {
+		profile += "model: " + strconv.Quote(strings.TrimSpace(model)) + "\n"
+	}
+	profile += "system-prompt: prompts/system/" + name + ".md\n---\n\n" +
+		"You are " + name + ", a standalone " + role + " Agent. Complete the assigned task within your declared capabilities.\n"
+	if err := os.WriteFile(filepath.Join(root, "agents", name+".md"), []byte(profile), 0644); err != nil {
+		return err
+	}
+	systemPrompt := "You are " + name + ", a standalone " + role + " Agent.\n\n" +
+		"Available tools:\n{{TOOLS}}\n\nGuidelines:\n{{GUIDELINES}}\n" +
+		"{{PROJECT_CONTEXT}}{{SKILLS}}{{APPEND_SYSTEM_PROMPT}}\n"
+	if err := os.WriteFile(filepath.Join(root, "prompts", "system", name+".md"), []byte(systemPrompt), 0644); err != nil {
+		return err
+	}
+	manifest := map[string]any{
+		"name": "@ageniti/" + name, "version": "0.1.0", "license": license,
+		"files": []string{"agents", "prompts/system"},
+		"pi":    map[string]any{"agents": []string{"agents/*.md"}},
+		"ergo": map[string]any{
+			"entryAgent": name, "agentDependencies": []string{},
+			"requiredTools": tools, "optionalTools": []string{},
+		},
+	}
+	data, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(root, "package.json"), append(data, '\n'), 0644)
+}
+
+func writeApp(root, name, role, module, license string, tools []string) error {
+	goMod := "module " + strings.TrimSpace(module) + "\n\ngo 1.26.0\n"
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(goMod), 0644); err != nil {
+		return err
+	}
+	mainSource := `package main
+
+import (
+	"context"
+	"embed"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io/fs"
+	"os"
+	"strings"
+
+	ergoruntime "github.com/ageniti/ergo-core/runtime"
+)
+
+//go:embed resources
+var resources embed.FS
+
+func main() {
+	provider := flag.String("provider", "openai", "model provider")
+	model := flag.String("model", "gpt-5", "model ID")
+	flag.Parse()
+	prompt := strings.TrimSpace(strings.Join(flag.Args(), " "))
+	if prompt == "" {
+		fmt.Fprintln(os.Stderr, "usage: app [--provider provider] [--model model] <prompt>")
+		os.Exit(2)
+	}
+	resourceFS, err := fs.Sub(resources, "resources")
+	if err != nil {
+		panic(err)
+	}
+	agentRuntime, err := ergoruntime.NewFS(resourceFS)
+	if err != nil {
+		panic(err)
+	}
+	cwd, _ := os.Getwd()
+	encoder := json.NewEncoder(os.Stdout)
+	err = agentRuntime.Run(context.Background(), map[string]any{
+		"agentId": ` + strconv.Quote(name) + `,
+		"prompt": prompt,
+		"cwd": cwd,
+		"provider": *provider,
+		"model": *model,
+	}, nil, func(event ergoruntime.Event) error {
+		return encoder.Encode(event)
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(mainSource), 0644); err != nil {
+		return err
+	}
+	readme := fmt.Sprintf(`# %s
+
+Standalone Ergo %s Agent generated by `+"`ergo-agent new`"+`.
+
+This application imports `+"`github.com/ageniti/ergo-core/runtime`"+` and embeds
+only its own `+"`resources/`"+` directory. It has no implicit Chief entry point
+and does not contain Ergo's default Agent profiles, prompts, or Skills.
+
+## Run
+
+Requires Go 1.26 or newer and credentials for the selected model Provider.
+
+`+"```bash"+`
+go mod tidy
+OPENAI_API_KEY=... go run . "your task"
+`+"```"+`
+
+Choose another Provider or model:
+
+`+"```bash"+`
+go run . --provider openai --model gpt-5 "your task"
+`+"```"+`
+
+## Project layout
+
+`+"```text"+`
+.
+├── go.mod
+├── main.go
+└── resources/
+    ├── package.json
+    ├── agents/%s.md
+    └── prompts/system/%s.md
+`+"```"+`
+
+The entry Agent is always selected explicitly as `+"`%s`"+`. Its initial tool
+allowlist is `+"`%s`"+`.
+
+Edit the profile to change role instructions, tools, model defaults, or
+delegation policy. Edit the system prompt to change the lower-level runtime
+harness. A Meta Agent cannot delegate; a Sub Agent must declare both the
+`+"`subagent`"+` tool and exact `+"`delegates`"+` targets.
+
+`+"`resources/package.json`"+` records the entry Agent, dependency closure, and
+required/optional host tools. Keep those fields synchronized when adding
+dependent Agents.
+
+## License
+
+The generated Agent Package declares `+"`%s`"+`. Review the Ergo Core and Ergo
+Agent licenses before distribution.
+`, name, role, name, name, name, strings.Join(tools, ", "), license)
+	return os.WriteFile(filepath.Join(root, "README.md"), []byte(readme), 0644)
+}
+
+func normalizedList(value string) []string {
+	seen := map[string]bool{}
+	var result []string
+	for _, item := range strings.Split(value, ",") {
+		item = strings.TrimSpace(item)
+		if item != "" && !seen[item] {
+			seen[item] = true
+			result = append(result, item)
+		}
+	}
+	sort.Strings(result)
+	return result
+}

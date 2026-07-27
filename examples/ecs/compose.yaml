@@ -1,0 +1,73 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: agent
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: agent_dev_password
+      MYSQL_ROOT_PASSWORD: local_root_password
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports: ["3306:3306"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-plocal_root_password"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: examples/ecs/Dockerfile.api
+    command: ["/app/agent-migrate"]
+    environment:
+      AGENT_MYSQL_DSN: agent:agent_dev_password@tcp(mysql:3306)/agent?parseTime=true&charset=utf8mb4&collation=utf8mb4_0900_ai_ci
+    depends_on:
+      mysql: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: examples/ecs/Dockerfile.api
+    environment:
+      AGENT_MYSQL_DSN: agent:agent_dev_password@tcp(mysql:3306)/agent?parseTime=true&charset=utf8mb4&collation=utf8mb4_0900_ai_ci
+      AGENT_INTERNAL_TOKEN: local-development-token-change-me-123456
+    ports: ["8080:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: examples/ecs/Dockerfile.worker
+      target: ${AGENT_WORKER_DOCKER_TARGET:-worker}
+    environment:
+      AGENT_MYSQL_DSN: agent:agent_dev_password@tcp(mysql:3306)/agent?parseTime=true&charset=utf8mb4&collation=utf8mb4_0900_ai_ci
+      AGENT_ROOT: /app
+      AGENT_WORKSPACE_ROOT: /workspace
+      AGENT_WORKER_CONCURRENCY: 2
+      AGENT_OUTBOX_WEBHOOK_URL: ${AGENT_OUTBOX_WEBHOOK_URL:-}
+      AGENT_OUTBOX_SECRET: ${AGENT_OUTBOX_SECRET:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      BOCHA_API_KEY: ${BOCHA_API_KEY:-}
+      BOCHA_API_BASE_URL: ${BOCHA_API_BASE_URL:-}
+      BOCHA_SEARCH_TIMEOUT: ${BOCHA_SEARCH_TIMEOUT:-30s}
+      AGENT_IMAGE_MODEL: ${AGENT_IMAGE_MODEL:-google/gemini-3.1-flash-image}
+      AGENT_IMAGE_BASE_URL: ${AGENT_IMAGE_BASE_URL:-}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    volumes:
+      - ./workspace:/workspace
+      - ../../skills:/app/skills:ro
+      - ../../agents:/app/agents:ro
+      - ../../prompts:/app/prompts:ro
+      - ../../extensions:/app/extensions:ro
+
+volumes:
+  mysql-data:

@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "local-example": {
+      "transport": "stdio",
+      "command": "/app/bin/mcp-filesystem",
+      "args": ["/workspace"]
+    },
+    "remote-example": {
+      "transport": "http",
+      "url": "${MCP_REMOTE_URL}",
+      "headers": {
+        "Authorization": "Bearer ${MCP_REMOTE_TOKEN}"
+      }
+    }
+  }
+}

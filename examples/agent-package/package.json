@@ -1,0 +1,17 @@
+{
+  "name": "@ageniti/example-meta-agent",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "agents",
+    "prompts"
+  ],
+  "pi": {
+    "agents": [
+      "agents/example-meta.md"
+    ],
+    "prompts": [
+      "prompts/*.md"
+    ]
+  }
+}

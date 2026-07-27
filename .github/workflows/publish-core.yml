@@ -1,0 +1,61 @@
+name: Publish Ergo Core
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Core version, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-ergo-core
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.5"
+          cache: true
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: git check-ref-format "refs/tags/${VERSION}"
+      - name: Verify canonical source
+        run: make verify
+      - name: Export core source
+        run: go run ./cmd/export-core -output /tmp/ergo-core-export
+      - name: Normalize and verify core module
+        working-directory: /tmp/ergo-core-export
+        run: |
+          go mod tidy
+          go test -race ./...
+          go vet ./...
+      - name: Check out generated core repository
+        uses: actions/checkout@v4
+        with:
+          repository: ageniti/ergo-core
+          token: ${{ secrets.CORE_REPO_TOKEN }}
+          path: core-publish
+          fetch-depth: 0
+      - name: Publish generated source and matching tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          rsync -a --delete --exclude .git/ /tmp/ergo-core-export/ core-publish/
+          cd core-publish
+          git config user.name "ageniti-release-bot"
+          git config user.email "yiliu.li@outlook.com"
+          git add --all
+          git diff --cached --quiet && { echo "No core changes to publish"; exit 1; }
+          git commit -m "Release ${VERSION}"
+          git tag -a "${VERSION}" -m "Ergo Core ${VERSION}"
+          git push origin HEAD
+          git push origin "${VERSION}"

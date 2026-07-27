@@ -1,0 +1,34 @@
+Ergo Agent — Dual License
+
+Copyright (C) 2026 Yiliu Li <yiliu.li@outlook.com>
+
+This software is available under your choice of either:
+
+1. GNU Affero General Public License, version 3 only
+   (SPDX-License-Identifier: AGPL-3.0-only).
+
+   The complete, unmodified license terms published by the Free Software
+   Foundation are incorporated into this notice by reference and are available
+   at:
+
+   https://www.gnu.org/licenses/agpl-3.0.txt
+
+   You may copy, modify, and distribute this software under those terms. If you
+   modify the software and users interact with it remotely through a computer
+   network, section 13 of the GNU Affero General Public License requires you to
+   offer those users the Corresponding Source.
+
+2. A separate commercial license from the copyright holder.
+
+   A commercial license may permit proprietary use, modification,
+   redistribution, embedding, or network deployment without the source-code
+   obligations of the GNU Affero General Public License. No commercial rights
+   are granted by this file alone. See LICENSE-COMMERCIAL.md and obtain a
+   separately executed written agreement.
+
+Commercial licensing contact:
+
+Yiliu Li <yiliu.li@outlook.com>
+
+This dual-license notice does not alter or replace the licenses of third-party
+dependencies.

@@ -1,0 +1,15 @@
+FROM public.ecr.aws/docker/library/golang:1.26.5-bookworm AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY internal ./internal
+COPY examples/ecs ./examples/ecs
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent-api ./examples/ecs/cmd/agent-api \
+ && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent-migrate ./examples/ecs/cmd/agent-migrate
+
+FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /app
+COPY --from=build /out/agent-api /out/agent-migrate /app/
+EXPOSE 8080
+USER nonroot:nonroot
+CMD ["/app/agent-api"]

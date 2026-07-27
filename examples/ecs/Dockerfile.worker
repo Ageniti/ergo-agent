@@ -1,0 +1,51 @@
+FROM public.ecr.aws/docker/library/golang:1.26.5-bookworm AS go-build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+# Keep the build context aligned with the SDK's public package split and the
+# files consumed by go:embed. .dockerignore excludes local workspaces/secrets.
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent-worker ./examples/ecs/cmd/agent-worker
+
+FROM public.ecr.aws/docker/library/debian:bookworm-slim AS worker-runtime
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends bash ca-certificates git ripgrep fd-find \
+ && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=go-build /out/agent-worker /app/agent-worker
+COPY skills /app/skills
+COPY agents /app/agents
+COPY prompts /app/prompts
+COPY docs /app/docs
+COPY extensions /app/extensions
+COPY config /app/config
+RUN useradd --system --uid 10001 --home /nonexistent --shell /usr/sbin/nologin agent \
+ && mkdir -p /workspace && chown agent:agent /workspace
+
+# Optional compatibility image for Skills and stdio MCP servers distributed
+# through npm. The default final stage below remains the smaller Go-only image.
+FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS worker-full
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends bash ca-certificates curl git ripgrep fd-find \
+ && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+ && rm -rf /var/lib/apt/lists/* \
+ && node --version \
+ && npm --version \
+ && npx --version \
+ && curl --version
+WORKDIR /app
+COPY --from=worker-runtime /app /app
+RUN useradd --system --uid 10001 --home /nonexistent --shell /usr/sbin/nologin agent \
+ && mkdir -p /workspace /tmp/agent-home/.npm-global /tmp/npm-cache \
+ && chown -R agent:agent /workspace /tmp/agent-home /tmp/npm-cache
+ENV HOME=/tmp/agent-home \
+    NPM_CONFIG_CACHE=/tmp/npm-cache \
+    NPM_CONFIG_PREFIX=/tmp/agent-home/.npm-global \
+    PATH=/tmp/agent-home/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+USER agent
+ENTRYPOINT ["/app/agent-worker"]
+
+FROM worker-runtime AS worker
+USER agent
+ENTRYPOINT ["/app/agent-worker"]

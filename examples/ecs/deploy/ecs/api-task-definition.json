@@ -1,0 +1,31 @@
+{
+  "family": "ergo-agent-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${AGENT_API_TASK_ROLE_ARN}",
+  "runtimePlatform": { "cpuArchitecture": "ARM64", "operatingSystemFamily": "LINUX" },
+  "containerDefinitions": [{
+    "name": "api",
+    "image": "${AGENT_API_IMAGE}",
+    "essential": true,
+    "readonlyRootFilesystem": true,
+    "portMappings": [{ "containerPort": 8080, "protocol": "tcp", "name": "http" }],
+    "environment": [
+      { "name": "AGENT_HTTP_ADDRESS", "value": ":8080" },
+      { "name": "AGENT_DB_MAX_OPEN", "value": "20" },
+      { "name": "AGENT_DB_MAX_IDLE", "value": "10" }
+    ],
+    "secrets": [
+      { "name": "AGENT_MYSQL_DSN", "valueFrom": "${MYSQL_DSN_SECRET_ARN}" },
+      { "name": "AGENT_INTERNAL_TOKEN", "valueFrom": "${INTERNAL_TOKEN_SECRET_ARN}" }
+    ],
+    "stopTimeout": 30,
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": { "awslogs-group": "${API_LOG_GROUP}", "awslogs-region": "${AWS_REGION}", "awslogs-stream-prefix": "api" }
+    }
+  }]
+}

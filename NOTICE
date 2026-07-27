@@ -1,0 +1,11 @@
+Ergo Agent
+Copyright (C) 2026 Yiliu Li <yiliu.li@outlook.com>
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Ergo-Commercial
+
+This project is dual-licensed under the GNU Affero General Public License
+version 3 only and a separately negotiated commercial license.
+
+Third-party Go modules and external services remain subject to their own
+licenses and terms. A commercial Ergo Agent license does not relicense
+third-party components.

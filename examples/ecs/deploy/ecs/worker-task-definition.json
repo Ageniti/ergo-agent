@@ -1,0 +1,49 @@
+{
+  "family": "ergo-agent-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "4096",
+  "ephemeralStorage": { "sizeInGiB": 50 },
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${AGENT_WORKER_TASK_ROLE_ARN}",
+  "runtimePlatform": { "cpuArchitecture": "ARM64", "operatingSystemFamily": "LINUX" },
+  "containerDefinitions": [{
+    "name": "worker",
+    "image": "${AGENT_WORKER_IMAGE}",
+    "essential": true,
+    "readonlyRootFilesystem": false,
+    "environment": [
+      { "name": "AGENT_ROOT", "value": "/app" },
+      { "name": "AGENT_WORKSPACE_ROOT", "value": "/workspace" },
+      { "name": "AGENT_OUTBOX_WEBHOOK_URL", "value": "${OUTBOX_WEBHOOK_URL}" },
+      { "name": "AGENT_WORKER_CONCURRENCY", "value": "1" },
+      { "name": "AGENT_WORKER_LEASE_DURATION", "value": "120s" },
+      { "name": "AGENT_DB_MAX_OPEN", "value": "8" },
+      { "name": "AGENT_DB_MAX_IDLE", "value": "4" }
+    ],
+    "secrets": [
+      { "name": "AGENT_MYSQL_DSN", "valueFrom": "${MYSQL_DSN_SECRET_ARN}" },
+      { "name": "OPENAI_API_KEY", "valueFrom": "${OPENAI_API_KEY_SECRET_ARN}" },
+      { "name": "ANTHROPIC_API_KEY", "valueFrom": "${ANTHROPIC_API_KEY_SECRET_ARN}" },
+      { "name": "GEMINI_API_KEY", "valueFrom": "${GEMINI_API_KEY_SECRET_ARN}" },
+      { "name": "OPENROUTER_API_KEY", "valueFrom": "${OPENROUTER_API_KEY_SECRET_ARN}" },
+      { "name": "BOCHA_API_KEY", "valueFrom": "${BOCHA_API_KEY_SECRET_ARN}" },
+      { "name": "AGENT_OUTBOX_SECRET", "valueFrom": "${OUTBOX_SECRET_ARN}" }
+    ],
+    "mountPoints": [{ "sourceVolume": "workspace", "containerPath": "/workspace", "readOnly": false }],
+    "stopTimeout": 120,
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": { "awslogs-group": "${WORKER_LOG_GROUP}", "awslogs-region": "${AWS_REGION}", "awslogs-stream-prefix": "worker" }
+    }
+  }],
+  "volumes": [{
+    "name": "workspace",
+    "efsVolumeConfiguration": {
+      "fileSystemId": "${EFS_FILE_SYSTEM_ID}",
+      "transitEncryption": "ENABLED",
+      "authorizationConfig": { "accessPointId": "${EFS_ACCESS_POINT_ID}", "iam": "ENABLED" }
+    }
+  }]
+}
