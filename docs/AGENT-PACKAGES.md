@@ -1,5 +1,7 @@
 # Agent Packages
 
+[English](AGENT-PACKAGES.md) | [简体中文](AGENT-PACKAGES.zh-CN.md)
+
 Every Agent profile can be published as an independent npm, Git, or local
 package. An Agent Package has one declared entry Agent and contains the complete
 profile dependency closure needed for its delegation policy.
@@ -46,6 +48,7 @@ offline-capable, and free of cross-package version or removal conflicts.
 ```text
 dist/coding-agent/
 ├── README.md
+├── README.zh-CN.md
 ├── LICENSE
 ├── LICENSE-COMMERCIAL.md
 ├── NOTICE

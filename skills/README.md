@@ -1,5 +1,7 @@
 # Skills
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Skills are on-demand instruction bundles discovered by the Go resource loader.
 Each Skill lives in its own directory and has a complete `SKILL.md`:
 

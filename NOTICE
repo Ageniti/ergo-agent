@@ -9,3 +9,13 @@ version 3 only and a separately negotiated commercial license.
 Third-party Go modules and external services remain subject to their own
 licenses and terms. A commercial Ergo Agent license does not relicense
 third-party components.
+
+Ergo Agent draws design inspiration from and preserves selected compatibility
+with the execution semantics, prompts, tool contracts, and resource conventions
+of Pi:
+
+https://github.com/badlogic/pi-mono
+
+Pi is Copyright (c) 2025 Mario Zechner and is distributed under the MIT
+License. Ergo Agent is an independent project with its own pure-Go Runtime,
+role model, integrations, packaging, and enterprise control plane.

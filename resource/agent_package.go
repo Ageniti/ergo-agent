@@ -249,8 +249,12 @@ func (r Resources) BuildAgentPackage(output string, options AgentPackageBuildOpt
 	if err := os.WriteFile(filepath.Join(staging, "package.json"), append(data, '\n'), 0644); err != nil {
 		return AgentPackageBuildResult{}, err
 	}
-	readme := fmt.Sprintf("# %s\n\nEntry Agent: `%s`\n\nIncluded Agent dependencies: %s\n\nRequired host tools: %s\n\nOptional host tools: %s\n", packageName, entry, markdownList(dependencies), markdownList(requiredTools), markdownList(optionalTools))
+	readme := fmt.Sprintf("# %s\n\n[English](README.md) | [简体中文](README.zh-CN.md)\n\nErgo draws inspiration from Pi and preserves selected compatibility while providing its own pure-Go Runtime and resource model.\n\nEntry Agent: `%s`\n\nIncluded Agent dependencies: %s\n\nRequired host tools: %s\n\nOptional host tools: %s\n", packageName, entry, markdownList(dependencies), markdownList(requiredTools), markdownList(optionalTools))
 	if err := os.WriteFile(filepath.Join(staging, "README.md"), []byte(readme), 0644); err != nil {
+		return AgentPackageBuildResult{}, err
+	}
+	readmeZH := fmt.Sprintf("# %s\n\n[English](README.md) | [简体中文](README.zh-CN.md)\n\nErgo 借鉴了 Pi 的部分设计并选择性保留兼容，同时提供自己的纯 Go Runtime 与资源模型。\n\n入口 Agent：`%s`\n\n包含的 Agent 依赖：%s\n\n宿主必需工具：%s\n\n宿主可选工具：%s\n", packageName, entry, markdownList(dependencies), markdownList(requiredTools), markdownList(optionalTools))
+	if err := os.WriteFile(filepath.Join(staging, "README.zh-CN.md"), []byte(readmeZH), 0644); err != nil {
 		return AgentPackageBuildResult{}, err
 	}
 	if err := ValidateAgentPackage(staging); err != nil {

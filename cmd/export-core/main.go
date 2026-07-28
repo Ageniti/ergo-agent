@@ -89,7 +89,13 @@ func exportCore(sourceRoot, output string) error {
 	}
 	readme := `# Ergo Core
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Pure Go execution SDK for applications that ship their own Ergo Agents.
+
+Ergo draws inspiration from Pi and preserves selected behavioral and resource
+compatibility. Its independent, self-contained pure-Go Runtime provides the
+execution foundation.
 
 This is a generated, read-only distribution of the canonical
 [` + sourceModule + `](https://` + sourceModule + `) repository. Submit issues,
@@ -126,7 +132,7 @@ err := agentRuntime.Run(ctx, map[string]any{
 }, nil, sink)
 ` + "```" + `
 
-Core has no implicit entry Agent, so every run must provide ` + "`agentId`" + `.
+Core uses explicit entry selection, so every run provides ` + "`agentId`" + `.
 Use [` + sourceModule + `](https://` + sourceModule + `) when you want Ergo's
 complete default Agent suite or the ` + "`ergo-agent`" + ` scaffolding CLI.
 
@@ -135,7 +141,51 @@ complete default Agent suite or the ` + "`ergo-agent`" + ` scaffolding CLI.
 AGPL-3.0-only OR a separately executed Ergo Commercial License. See
 ` + "`LICENSE`" + ` and ` + "`LICENSE-COMMERCIAL.md`" + `.
 `
+	readmeZH := `# Ergo Core
+
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+面向自带 Ergo Agent 资源的应用程序的纯 Go 执行 SDK。
+
+Ergo 借鉴了 Pi 的部分设计并选择性保留行为与资源兼容，其独立、自包含的纯 Go
+Runtime 提供执行基础。
+
+这是由规范源码仓库 [` + sourceModule + `](https://` + sourceModule + `)
+自动生成的只读发行版。Issue、修改和发布都应在规范仓库进行，请勿直接编辑本仓库。
+
+## 包含内容
+
+- Agent 执行循环、工具、Session、压缩、MCP 与 Extension API；
+- Provider 适配器以及模型/图片契约；
+- Agent Profile、Prompt、Skill 和 Package 加载器；
+- 博查 ` + "`web_search`" + ` 等可选原生 Go 集成。
+
+## 不包含内容
+
+- Chief、Coding 等全部默认 Agent Profile；
+- 默认系统提示词和内置 Skill；
+- CLI、应用示例和 ECS/MySQL 控制面；
+- JavaScript Extension 加载。
+
+## 安装
+
+` + "```bash" + `
+go get ` + coreModule + `/runtime
+` + "```" + `
+
+Core 使用显式入口选择，每次运行都提供 ` + "`agentId`" + `。需要完整默认
+Agent 套件或 ` + "`ergo-agent`" + ` 脚手架 CLI 时，请使用
+[` + sourceModule + `](https://` + sourceModule + `)。
+
+## 许可证
+
+AGPL-3.0-only，或另行签署的 Ergo Commercial License。详见
+` + "`LICENSE`" + ` 和 ` + "`LICENSE-COMMERCIAL.md`" + `。
+`
 	if err := os.WriteFile(filepath.Join(staging, "README.md"), []byte(readme), 0644); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(staging, "README.zh-CN.md"), []byte(readmeZH), 0644); err != nil {
 		return err
 	}
 	return os.Rename(staging, output)
@@ -157,7 +207,9 @@ func exportDirectory(sourceRoot, staging, directory string) error {
 		if err != nil {
 			return err
 		}
-		if filepath.Ext(relative) != ".go" && relative != filepath.Join("extensions", "README.md") {
+		if filepath.Ext(relative) != ".go" &&
+			relative != filepath.Join("extensions", "README.md") &&
+			relative != filepath.Join("extensions", "README.zh-CN.md") {
 			return nil
 		}
 		if strings.HasSuffix(relative, "_test.go") && !exportedTestDirectories[topDirectory(relative)] {

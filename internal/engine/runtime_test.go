@@ -127,7 +127,7 @@ func TestNativeLoopUsesLocalPromptAndTool(t *testing.T) {
 	if provider.calls != 2 {
 		t.Fatalf("calls=%d", provider.calls)
 	}
-	if !strings.HasPrefix(provider.requests[0].System, "You are an expert coding assistant operating inside pi") {
+	if !strings.HasPrefix(provider.requests[0].System, "You are Ergo, an expert coding assistant operating inside the Ergo Agent Runtime") {
 		t.Fatalf("official prompt missing: %q", provider.requests[0].System)
 	}
 	if !hasTool(provider.requests[0].Tools, "todo") {
@@ -556,13 +556,13 @@ func TestPiCodingSystemPromptGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n" +
+	want := "You are Ergo, an expert coding assistant operating inside the Ergo Agent Runtime. You help users by reading files, executing commands, editing code, and writing new files.\n\n" +
 		"Available tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n\n" +
 		"In addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n" +
 		"- Use bash for file operations like ls, rg, find\n- Use read to examine files instead of cat or sed.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\n" +
-		"Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n" +
+		"Ergo documentation (read only when the user asks about Ergo itself, its SDK, architecture, extensions, skills, packages, or Pi compatibility):\n" +
 		"- Main documentation: " + filepath.Join(root, "docs", "PI-PARITY.md") + "\n- Additional docs: " + filepath.Join(root, "docs") + "\n- Examples: " + filepath.Join(root, "docs") + " (extensions, custom tools, SDK)\n" +
-		"- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: " + filepath.ToSlash(cwd) + "\n"
+		"- When reading Ergo docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- Relevant documents include ARCHITECTURE.md, AGENT-PACKAGES.md, STANDALONE-AGENTS.md, PROMPT-TEMPLATES.md, SECURITY.md, CONFORMANCE.md, and PI-PARITY.md\n- When working on Ergo topics, read the relevant docs and examples and follow Markdown cross-references before implementing\n- Always read the relevant Ergo Markdown files completely before making SDK or Runtime changes\nCurrent working directory: " + filepath.ToSlash(cwd) + "\n"
 	if got != want {
 		t.Fatalf("system prompt mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

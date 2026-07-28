@@ -33,6 +33,13 @@ func TestExportCoreContainsOnlyCoreSource(t *testing.T) {
 			t.Fatalf("generated README is missing %q:\n%s", required, readme)
 		}
 	}
+	readmeZH, err := os.ReadFile(filepath.Join(output, "README.zh-CN.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readmeZH), "纯 Go 执行 SDK") {
+		t.Fatalf("generated Chinese README has unexpected content:\n%s", readmeZH)
+	}
 	for _, forbidden := range []string{"agents", "prompts", "skills", "examples", "agent", "runner", "embed.go"} {
 		if _, err := os.Stat(filepath.Join(output, forbidden)); !os.IsNotExist(err) {
 			t.Fatalf("core export contains %s: %v", forbidden, err)

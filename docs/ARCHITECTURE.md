@@ -1,107 +1,77 @@
-# Runtime 与企业控制面
+# Runtime and Enterprise Control Plane
 
-## 进程边界
+[English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md)
 
-API 和 Worker 都是 Go 二进制。Worker 从 MySQL 获取 job 后，直接调用 `agent.Runtime`；不存在 Node 子进程或 JSONL bridge。模型、MCP 与工具事件通过 callback 写入同一套 MySQL 状态机。
+## Process boundary
 
-```text
-queued -> running -> completed
-                  -> failed (after bounded job retry)
-                  -> awaiting_approval -> queued -> running
-                  -> awaiting_input -> queued/running
-queued/running/awaiting_approval/awaiting_input -> cancelled
-```
-
-Run 创建事务同时写 job、idempotency 与 outbox。Worker 在 READ COMMITTED 事务中使用 `SELECT ... FOR UPDATE SKIP LOCKED` 获取租约，并以 `lease/3` 心跳。执行语义是 at-least-once；外部副作用工具仍必须自行幂等。
-
-## Runtime 分层
-
-- `provider/`：文本 Provider 协议适配器、模型感知工厂、内置 API-key 目录、流式传输、注册表及独立图片生成；
-- `message/`：Message、Image 与 ToolCall 数据契约；
-- `tool/`：Tool Definition/Result 契约；
-- `session/`：应用持有的 SessionController、control 与 interaction 契约；
-- `resource/`：Agent profiles、Prompt、Skill、template、项目上下文及 Go 原生资源包管理；
-- `runtime/`：应用自带资源的最小公开入口，不导入默认 embed 包且不设置隐式入口 Agent；
-- `internal/engine/runtime.go`：Agent loop、tool call、session entries、控制消息与 subagent；
-- `internal/engine/tools.go`：coding/Todo/subagent 工具；
-- `internal/engine/mcp.go`：MCP JSON-RPC client；
-- `internal/engine/compaction.go`：Session compaction 与分支摘要；
-- `internal/engine/extensions.go`：App 编译期 Go Extension 生命周期；
-- `agent/`：保留 `agent.New()` 和原公开类型的兼容 SDK 门面。
-
-模块根目录使用 Go `embed` 编入默认 `agents/`、`prompts/`、`skills/` 与
-`docs/`。`agent.NewDefault()` 首次调用时将它们按原路径物化到进程级临时资源
-目录，使 Prompt 中的文件路径以及 Agent 的 `read` 工具保持原有语义；
-`agent.New(root)` 仍直接使用调用方提供的资源目录。
-
-只构建一个自带资源的 Sub/Meta Agent 时，应用应导入 `runtime/` 而不是
-`agent/` 或 `runner/`。`runtime.NewFS` 只物化调用方通过 `embed.FS` 提供的资源，
-且运行请求必须明确包含 `agentId`。因此链接器的 import graph 不会到达模块根的
-默认 embed 包；Chief 资源不会进入该二进制。CLI 脚手架与
-`examples/sdk-app/custom-root` 均使用这条路径。
-
-Extension 采用进程启动时显式注册，不动态加载不受信任的 `.so`。业务扩展需要热插拔时优先使用 MCP。
-
-Provider 公共边界是 `Provider`/`StreamingProvider`。`ProviderAPI` 表示 wire protocol，`HTTPProviderConfig` 用于构造自定义 endpoint，`ModelProviderFactory` 允许 OpenCode、xAI、Fireworks、Cloudflare 等同一供应商的不同模型选择不同协议。`ProviderRegistry` 仍允许应用覆盖任何内置名称。
-
-适配器保留直接 HTTP wire control，而没有把公共边界绑定到某一家 SDK。这样 OpenAI/Azure/Codex、Gemini/Vertex 以及兼容网关可以共用相同的 session、签名、header hook 和错误语义；AWS Bedrock 与 MCP 这类具有独立传输模型的能力仍使用官方 Go SDK。
-
-协议适配器已物理迁移到 `provider`，资源实现已物理迁移到 `resource`，剩余紧耦合
-的执行逻辑作为一个私有整体位于 `internal/engine`。`agent.New()`、原公开类型身份
-和现有运行行为通过类型别名与直接构造器转发保持兼容；不存在第二套 Runtime，也
-不改变依赖注入或状态所有权。
-
-SDK 包关系如下（箭头表示 import 方向）：
+The API and Worker are both Go binaries. After the Worker claims a job from MySQL, it calls `agent.Runtime` directly. There is no Node subprocess or JSONL bridge. Model, MCP, and tool events are written through callbacks into the same MySQL state machine.
 
 ```text
-existing applications ──> agent ───────────────┐
-default-suite users ─────> runner ──────────────┤
-standalone Agents ───────> runtime ─────────────┤
-extension users ─────────> extensions ──────────┤
-                                                 v
-                                        internal/engine
-                                           │   │
-                   ┌───────────────────────┘   └──────────────┐
-                   v                                           v
-           provider / resource                         session / tool
-                 │                                           │
-                 └──────────────> tool ──────────────────────┘
-                                      │
-                                      v
-                                   message
+App -> API -> MySQL jobs/outbox/sessions <- Worker -> Provider
+                                              |----> MCP
+                                              |----> workspace tools
 ```
 
-`internal/architecture` 将这组依赖方向以及 `agent` 只能保留类型别名和构造器转发
-固化为测试；未来新增代码如果让基础契约反向依赖 Runtime，测试会直接失败。
+Run creation writes the job, idempotency record, and outbox entry in one transaction. Workers claim leases under READ COMMITTED with `SELECT ... FOR UPDATE SKIP LOCKED` and heartbeat every `lease/3`. Execution is at least once; tools with external side effects must still be idempotent.
 
-## Core 独立发布
+## Runtime layers
 
-`github.com/ageniti/ergo-agent` 是唯一人工维护的源码仓库。
-`cmd/export-core` 从其中选择 Runtime、engine、provider、resource、tool、
-message、session 与 extensions，改写 Module 路径后生成
-`github.com/ageniti/ergo-core`。导出结果不包含 `agents/`、`prompts/`、
-`skills/`、完整 SDK embed、示例或 ECS 控制面。
+- `provider/`: text-provider adapters, model-aware factories, API-key catalog, streaming transports, registries, and independent image generation.
+- `message/`: message, image, and tool-call contracts.
+- `tool/`: tool definition and result contracts.
+- `session/`: application-owned `SessionController`, control, and interaction contracts.
+- `resource/`: agent profiles, prompts, skills, templates, project context, and native Go resource packages.
+- `runtime/`: minimal public entry point for applications that bring their own resources. It neither imports the default embed package nor selects an implicit entry agent.
+- `internal/engine/`: agent loop, tools, session entries, control messages, subagents, compaction, and extension lifecycle.
+- `agent/`: compatibility SDK facade preserving `agent.New()` and the original public types.
 
-`.github/workflows/publish-core.yml` 会先验证完整源码和导出的独立 Module，再把
-结果同步到只读发布仓库。两者使用相同版本标签；开发者只依赖 `ergo-core`
-时，Go 不需要下载完整的 `ergo-agent` 仓库。
+The module root embeds the default `agents/`, `prompts/`, `skills/`, and `docs/` trees. On first use, `agent.NewDefault()` materializes them at their original relative paths in a process-level temporary directory. This preserves file-path semantics in prompts and agent `read` tools. `agent.New(root)` continues to use a caller-provided resource directory directly.
 
-## 多实例
+To build one Sub or Meta Agent with only its own resources, import `runtime/` instead of `agent/` or `runner/`. `runtime.NewFS` materializes only the resources supplied through `embed.FS`, and each run must specify `agentId`. The linker therefore never reaches the module-root default embed package, so Chief resources are absent from that binary. The CLI scaffold and `examples/sdk-app/custom-root` use this path.
 
-- API 无状态，客户端重试由 tenant + idempotency key 收敛。
-- Worker 无本地 session；快照和 active leaf 位于 MySQL。
-- lease 到期后其他 ECS task 可接管 job。
-- workspace 文件不进入 MySQL；所有 Worker 必须通过同一 EFS access point 看到稳定路径，或使用具备等价一致性的外部 workspace provisioner。task ephemeral storage 只可用于 Bash 截断日志等临时数据。
-- outbox 同样使用 lease，消费者按 event id 去重并验证可选 HMAC。
-- 发布时 migration 是一次性 ECS task；API/Worker deployment 使用 circuit breaker 和自动回滚。
+Extensions are registered explicitly at process startup; untrusted `.so` files are never loaded dynamically. Prefer MCP for hot-pluggable business integrations.
 
-## 审批恢复
+The provider boundary is `Provider`/`StreamingProvider`. `ProviderAPI` identifies the wire protocol, `HTTPProviderConfig` constructs custom endpoints, and `ModelProviderFactory` lets a provider select different protocols per model. Applications may override any built-in name through `ProviderRegistry`.
 
-Runtime 对 `{toolName,input}` 稳定排序后计算 SHA-256，并由 run/tool-call/hash 派生稳定 approval UUID。未批准的危险调用生成 `approval.requested`，随后写 `session.snapshot` 和 `run.paused`。App 决定 allow/deny 后，MySQL 将原 job 重新排队，并把批准/拒绝 hash 与 session entries 注入恢复 payload。Questionnaire 与 MCP elicitation 同样使用稳定 interaction ID，可被其他 ECS task 继续。
+Adapters retain direct HTTP wire control rather than binding the public boundary to one vendor SDK. OpenAI, Azure, Codex, Gemini, Vertex, and compatible gateways can share session, signature, header-hook, and error semantics. AWS Bedrock and MCP, which have distinct transport models, use their official Go SDKs.
 
-## Session 操作
+Protocol adapters live in `provider`, resource implementations in `resource`, and the remaining tightly coupled execution logic is one private unit under `internal/engine`. Type aliases and direct constructor forwarding preserve `agent.New()`, public type identity, and existing behavior. There is no second runtime and no change to dependency injection or state ownership.
 
-Session tree 使用带 `id/parentId/type/timestamp` 的 Go JSON entries。支持 snapshot、fork、active leaf、navigate、labels、session name、自定义 entry/message、compaction entry，以及模型、thinking、active-tools 和 queue-mode 变更记录。
+```text
+message  tool  session
+   ^      ^      ^
+   |      |      |
+ provider   resource
+      \       /
+       internal/engine
+          ^      ^
+          |      |
+       runtime  agent
+```
 
-Extension 的 session replacement 通过 `SessionController` 接口注入。这样 `new/fork/switch`
-仍保留 Pi command-context 语义，但 Runtime 不直接依赖 MySQL；ECS worker 负责把接口绑定到持久化控制面。
+`internal/architecture` enforces these dependency directions and restricts `agent` to type aliases and constructor forwarding. A reverse dependency from a foundational contract to the runtime fails the architecture tests.
+
+## Independent Core distribution
+
+`github.com/ageniti/ergo-agent` is the only hand-maintained source repository. `cmd/export-core` selects runtime, engine, provider, resource, tool, message, session, and extension code, then rewrites the module path to produce `github.com/ageniti/ergo-core`. The export excludes default agents, prompts, skills, the full SDK embed, examples, and the ECS control plane.
+
+`.github/workflows/publish-core.yml` validates both the full source and the exported standalone module before synchronizing it to the read-only distribution repository. Both repositories use the same version tag. A developer depending only on `ergo-core` does not download the complete `ergo-agent` repository.
+
+## Multiple instances
+
+- The API is stateless; tenant plus idempotency key collapses client retries.
+- Workers keep no local session state; snapshots and the active leaf live in MySQL.
+- Another ECS task may reclaim a job after its lease expires.
+- Workspace files do not enter MySQL. Every Worker must see stable paths through the same EFS access point or an equivalent external workspace provisioner. Task ephemeral storage is only for temporary data.
+- The outbox also uses leases; consumers deduplicate by event ID and may verify an HMAC.
+- Migrations run as a one-off ECS task. API and Worker deployments use a circuit breaker and automatic rollback.
+
+## Approval resume
+
+The runtime stably sorts `{toolName,input}`, computes its SHA-256 hash, and derives a stable approval UUID from the run, tool call, and hash. A dangerous call without approval emits `approval.requested`, then `session.snapshot` and `run.paused`. After the application allows or denies it, MySQL requeues the original job and injects the decision hash and session entries into the resume payload. Questionnaires and MCP elicitation use stable interaction IDs and can likewise continue on another ECS task.
+
+## Session operations
+
+The session tree uses Go JSON entries with `id`, `parentId`, `type`, and `timestamp`. It supports snapshots, forks, active leaves, navigation, labels, session names, custom entries/messages, compaction entries, and recorded changes to model, thinking, active tools, and queue mode.
+
+Extensions receive session replacement through `SessionController`. This preserves Pi command-context semantics for `new`, `fork`, and `switch` while keeping the runtime independent of MySQL; the ECS Worker binds the interface to the persistent control plane.
