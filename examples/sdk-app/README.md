@@ -1,5 +1,7 @@
 # Complete Go SDK application
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 This example embeds the complete Ergo Agent distribution with
 `agent.NewDefault()`. The resulting application includes the default Chief,
 Coding, Sub/Meta Agent profiles, system prompts, skills, and execution Runtime.

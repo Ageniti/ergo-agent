@@ -1,5 +1,7 @@
 # AWS ECS deployment runbook
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 This directory contains task-definition templates for the production reference
 control plane. They describe the API/Worker container contract; they do not
 create networking, databases, storage, IAM, or autoscaling resources.

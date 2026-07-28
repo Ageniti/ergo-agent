@@ -1,5 +1,7 @@
 # Prompt resources
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 These are the default prompts distributed by `ergo-agent`. They are auditable
 product resources and are not included in the generated `ergo-core` Module.
 A standalone Agent must supply its own system prompt.
@@ -9,7 +11,7 @@ A standalone Agent must supply its own system prompt.
 | Path | Purpose |
 | --- | --- |
 | `system/chief-agent.md` | Domain-neutral default main Agent |
-| `system/coding-agent.md` | Pi-compatible coding harness |
+| `system/coding-agent.md` | Ergo coding harness with Pi-compatible behavior |
 | `modes/plan.md` | Read-only planning behavior |
 | `modes/execute-plan.md` | Plan execution context |
 

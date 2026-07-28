@@ -1,5 +1,7 @@
 # Go Extension API
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Extensions add native capabilities to an Ergo Runtime at application build
 time. There is no JavaScript extension loader and no runtime `.so` plugin
 loading: the host imports an Extension package, constructs it, and registers it

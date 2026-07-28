@@ -1,5 +1,7 @@
 # Standalone Agent development
 
+[English](STANDALONE-AGENTS.md) | [简体中文](STANDALONE-AGENTS.zh-CN.md)
+
 `ergo-agent new` scaffolds an independently runnable Sub or Meta Agent. The
 generated application imports the minimal `github.com/ageniti/ergo-core/runtime`
 package, embeds only its own `resources/` directory, and always passes an
@@ -36,6 +38,7 @@ reviewer-agent/
 ├── go.mod
 ├── main.go
 ├── README.md
+├── README.zh-CN.md
 └── resources/
     ├── package.json
     ├── agents/reviewer-agent.md

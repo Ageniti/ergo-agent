@@ -1,5 +1,7 @@
 # Prompt Templates
 
+[English](PROMPT-TEMPLATES.md) | [简体中文](PROMPT-TEMPLATES.zh-CN.md)
+
 `pi.prompts` exports reusable Markdown user-message templates. A UI can expose
 them as custom `/` shortcuts; they do not define an Agent or modify the system
 prompt.

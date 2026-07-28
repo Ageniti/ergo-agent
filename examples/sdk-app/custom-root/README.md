@@ -1,5 +1,7 @@
 # Custom resource root
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 This example proves that the Runtime can execute an application-owned Agent
 without loading Chief or any other default profile. It selects `only-meta`
 explicitly and supplies a complete custom resource root:

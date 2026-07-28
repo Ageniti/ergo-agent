@@ -1,5 +1,7 @@
 # Agent Profiles
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 This directory contains the default Agent suite shipped by
 `github.com/ageniti/ergo-agent`. These profiles are product resources, not Go
 implementations, and are deliberately excluded from the generated

@@ -44,6 +44,13 @@ func TestRunNewCreatesStandaloneAppWithoutChief(t *testing.T) {
 			t.Fatalf("generated README is missing %q:\n%s", required, readme)
 		}
 	}
+	readmeZH, err := os.ReadFile(filepath.Join(output, "README.zh-CN.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readmeZH), "独立 Ergo meta Agent") {
+		t.Fatalf("generated Chinese README has unexpected content:\n%s", readmeZH)
+	}
 
 	resourceRoot := filepath.Join(output, "resources")
 	if err := resource.ValidateAgentPackage(resourceRoot); err != nil {
@@ -73,6 +80,11 @@ func TestRunNewCreatesPackageOnlySubAgent(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(output, "main.go")); !os.IsNotExist(err) {
 		t.Fatalf("package-only output unexpectedly contains main.go: %v", err)
+	}
+	for _, name := range []string{"README.md", "README.zh-CN.md"} {
+		if _, err := os.Stat(filepath.Join(output, name)); err != nil {
+			t.Fatalf("package-only output is missing %s: %v", name, err)
+		}
 	}
 
 	data, err := os.ReadFile(filepath.Join(output, "package.json"))

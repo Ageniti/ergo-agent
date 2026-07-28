@@ -47,6 +47,11 @@ func TestEveryBundledAgentBuildsAsAnIndependentPackage(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(output, "prompts", "system", definition.Name+".md")); err != nil {
 				t.Fatalf("packaged system prompt: %v", err)
 			}
+			for _, name := range []string{"README.md", "README.zh-CN.md"} {
+				if _, err := os.Stat(filepath.Join(output, name)); err != nil {
+					t.Fatalf("packaged documentation %s: %v", name, err)
+				}
+			}
 			for _, name := range []string{"LICENSE", "LICENSE-COMMERCIAL.md", "NOTICE"} {
 				if _, err := os.Stat(filepath.Join(output, name)); err != nil {
 					t.Fatalf("packaged legal file %s: %v", name, err)
