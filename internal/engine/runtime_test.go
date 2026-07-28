@@ -533,7 +533,7 @@ func TestPiBuiltInToolEdgeCompatibility(t *testing.T) {
 	}
 }
 
-func TestPiCodingSystemPromptGolden(t *testing.T) {
+func TestErgoCodingSystemPromptGolden(t *testing.T) {
 	root := t.TempDir()
 	config := t.TempDir()
 	t.Setenv("AGENT_CONFIG_DIR", config)
@@ -1389,7 +1389,7 @@ func TestPackagedAgentFailsFastWhenRequiredHostToolIsMissing(t *testing.T) {
 	}
 }
 
-func TestOfficialPiPromptBundleHashes(t *testing.T) {
+func TestCompatibilityPromptBundleHashes(t *testing.T) {
 	constants := map[string]string{
 		summarizationSystemPrompt:     "c464889dcfa60441e642f291445b49523f263e6fb2725d0c25075543a2ec3f8f",
 		summarizationPrompt:           "9b00aa68df1a64279bc36e9093367f638701d48ec82e3d08436f65092a515f9b",
@@ -1399,17 +1399,17 @@ func TestOfficialPiPromptBundleHashes(t *testing.T) {
 	}
 	for content, expected := range constants {
 		if actual := fmt.Sprintf("%x", sha256.Sum256([]byte(content))); actual != expected {
-			t.Fatalf("official prompt drift: got %s want %s", actual, expected)
+			t.Fatalf("compatibility prompt drift: got %s want %s", actual, expected)
 		}
 	}
 	root := filepath.Clean("../..")
 	files := map[string]string{
 		"prompts/modes/plan.md":         "cff2d719d55522d36372655ba8799a769580eac4959e98f1f2176890a81b88b7",
 		"prompts/modes/execute-plan.md": "93603921389656e88a39e4955e0953149c4db227d073699251b3e98b9b4df129",
-		"agents/scout.md":               "a5d584400a202a0ab630e1c2e0aa1d03cb0ad8f0e1152605e1ef798c15c18327",
-		"agents/planner.md":             "adf18af664e2043da97c44e2ed3ae87a71501d186f83b0dbd85045192160b7c7",
-		"agents/reviewer.md":            "fe7645e26ddce12ecc413bb4cbc87bd24d21b540482d9301f765c11a8a64301a",
-		"agents/worker.md":              "069c0858bfdad462a20f2d7644ac6428a23d814d87a35a8b923f2a900063e29b",
+		"agents/scout.md":               "daf3bfada6e46dde41800f606542b63cfedd6443da7967eb418e3df89df80986",
+		"agents/planner.md":             "207374e844f5ad2a4fa7f1aeb238cc462b0ba662b25595c03d3d0ec2c02c19ed",
+		"agents/reviewer.md":            "26e38e1d1d03c93136e5a02b8add4027b07dc9de8d23116b17c18c63046e957b",
+		"agents/worker.md":              "6602de4578d7ef315ba34c6da5f28fbac775851a4b8399106ab87bf684f91385",
 	}
 	for path, expected := range files {
 		data, err := os.ReadFile(filepath.Join(root, path))
@@ -1453,7 +1453,7 @@ func TestCustomAgentScopeAndModelProviderResolution(t *testing.T) {
 	}
 }
 
-func TestCustomAgentWithoutToolsUsesPiCodingDefaults(t *testing.T) {
+func TestCustomAgentWithoutToolsUsesCodingDefaults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "agent.md")
 	if err := os.WriteFile(path, []byte("---\nname: custom\ndescription: custom role\n---\nDo work"), 0644); err != nil {
 		t.Fatal(err)
@@ -1568,16 +1568,18 @@ func TestAgentRolesAndDelegationPolicy(t *testing.T) {
 	}
 }
 
-func TestProfileCanRunDirectlyWithItsOwnModelDefault(t *testing.T) {
+func TestBundledProfileInheritsRunModel(t *testing.T) {
 	provider := &captureProvider{}
 	factory := &captureFactory{provider: provider}
 	runtime := New(filepath.Clean("../.."))
 	runtime.Providers = factory
 	var started []string
 	err := runtime.Run(context.Background(), map[string]any{
-		"agentId": "scout",
-		"prompt":  "Inspect the repository.",
-		"cwd":     t.TempDir(),
+		"agentId":  "scout",
+		"prompt":   "Inspect the repository.",
+		"cwd":      t.TempDir(),
+		"provider": "openai",
+		"model":    "gpt-5",
 	}, nil, func(event Event) error {
 		if event.Type == "agent.agent_start" {
 			started = append(started, event.AgentID)
@@ -1587,14 +1589,41 @@ func TestProfileCanRunDirectlyWithItsOwnModelDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if factory.name != "anthropic" || provider.request.Model != "claude-haiku-4-5" {
-		t.Fatalf("profile defaults were not applied: provider=%q request=%+v", factory.name, provider.request)
+	if factory.name != "openai" || provider.request.Model != "gpt-5" {
+		t.Fatalf("run model was not inherited: provider=%q request=%+v", factory.name, provider.request)
 	}
 	if strings.Join(started, ",") != "scout" {
 		t.Fatalf("profile was not run directly: started=%v", started)
 	}
 	if !strings.Contains(provider.request.System, "You are a scout.") {
 		t.Fatalf("scout prompt missing: %q", provider.request.System)
+	}
+}
+
+func TestCustomProfileCanOptIntoModelDefault(t *testing.T) {
+	config := t.TempDir()
+	t.Setenv("AGENT_CONFIG_DIR", config)
+	if err := os.MkdirAll(filepath.Join(config, "agents"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	profile := "---\nname: routed-agent\ndescription: explicit model route\nrole: meta\nmodel: claude-sonnet-4-5\ntools: read\n---\nYou are a routed specialist."
+	if err := os.WriteFile(filepath.Join(config, "agents", "routed-agent.md"), []byte(profile), 0644); err != nil {
+		t.Fatal(err)
+	}
+	provider := &captureProvider{}
+	factory := &captureFactory{provider: provider}
+	runtime := New(filepath.Clean("../.."))
+	runtime.Providers = factory
+	err := runtime.Run(context.Background(), map[string]any{
+		"agentId": "routed-agent",
+		"prompt":  "Inspect the repository.",
+		"cwd":     t.TempDir(),
+	}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if factory.name != "anthropic" || provider.request.Model != "claude-sonnet-4-5" {
+		t.Fatalf("explicit profile route was not applied: provider=%q request=%+v", factory.name, provider.request)
 	}
 }
 
@@ -1789,6 +1818,27 @@ func TestRuntimeSubagentToolUsesProfileDelegateAllowlist(t *testing.T) {
 	messages := adversarial.requests[1].Messages
 	if len(messages) == 0 || !strings.Contains(messages[len(messages)-1].Content, "expected one of allowed-meta") {
 		t.Fatalf("blocked delegation result=%+v", messages)
+	}
+
+	inherited := &queuedProvider{responses: []Completion{
+		{ToolCalls: []ToolCall{{ID: "allowed-call", Name: "subagent", Arguments: json.RawMessage(`{"agent":"allowed-meta","task":"inspect"}`)}}},
+		{Text: "specialist result"},
+		{Text: "finished"},
+	}}
+	runtime = New(root)
+	runtime.Providers = fakeFactory{inherited}
+	if err := runtime.Run(context.Background(), map[string]any{
+		"agentId": "caller", "prompt": "Delegate.", "cwd": t.TempDir(), "provider": "openai", "model": "gpt-5",
+	}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(inherited.requests) != 3 {
+		t.Fatalf("provider requests=%d", len(inherited.requests))
+	}
+	for index, request := range inherited.requests {
+		if request.Model != "gpt-5" {
+			t.Fatalf("request %d model=%q, want inherited gpt-5", index, request.Model)
+		}
 	}
 }
 

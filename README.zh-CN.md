@@ -23,7 +23,7 @@ Runtime、SDK、Role 系统、集成、打包方式和企业控制面。
 | 概念 | 含义 |
 |---|---|
 | **Runtime** | 共享的 Go 执行引擎：模型循环、工具、Session、委派、MCP 和事件 |
-| **Agent** | 声明身份、Role、工具、Prompt、模型默认值和委派策略的 Markdown Profile |
+| **Agent** | 声明身份、Role、工具、Prompt、可选模型路由和委派策略的 Markdown Profile |
 | **Role** | `main`、`sub`、`meta` 三种委派边界 |
 | **Agent Package** | 安装到现有 Runtime 的声明式 Agent 资源 |
 
@@ -61,6 +61,20 @@ Profile 独立声明工具权限；入口选择也与 Role 分开。调用方可
 
 委派默认关闭。`delegates: "*"` 显式启用所有可见且 Role 兼容的目标；构建
 Package 时会被冻结成精确名称。
+
+### 模型选择
+
+本次 Run 或恢复 Session 选择默认 `provider` 和 `model`。所有内置 Main、Sub、
+Meta Agent 都继承这个选择，委派调用也一样：
+
+```text
+Run(model=gpt-5) → chief-agent → coding-agent → reviewer
+                     gpt-5          gpt-5         gpt-5
+```
+
+自定义 Profile 可以声明 `provider` 和 `model`，显式启用按 Agent 模型路由。
+这是面向高级宿主的可选能力，适合已经管理多套 Provider 凭证、成本和数据流向策略
+的场景；内置 Profile 均留空。
 
 ## 默认 Agent 套件
 
@@ -223,8 +237,6 @@ role: sub
 tools: read, grep, find, ls, edit, write, subagent
 optional-tools: web_search
 delegates: reviewer, web-researcher
-provider: openai
-model: gpt-5
 thinking-level: high
 system-prompt: prompts/system/repository-agent.md
 ---
@@ -234,7 +246,8 @@ Complete the requested change and verify the result.
 ```
 
 `tools` 是精确能力白名单。`optional-tools` 让同一 Agent 可以适配能力不同的宿主。
-`delegates` 声明 Agent 资源依赖。
+`delegates` 声明 Agent 资源依赖。Profile 默认继承 Run/Session 的模型；只有宿主
+明确要把该 Agent 路由到其他模型时，才添加 `provider` 和 `model`。
 
 Profile 可以来自：
 
@@ -250,7 +263,7 @@ Profile 可以来自：
 
 | 资源 | 作用 |
 |---|---|
-| Agent Profile | 身份、Role、工具、模型默认值与委派策略 |
+| Agent Profile | 身份、Role、工具、可选模型路由与委派策略 |
 | System Prompt | Profile 使用的底层 Runtime 行为 |
 | Prompt Template | 发给当前 Agent 的可复用 `/` 用户消息 |
 | Skill | 按需加载的任务指令 |

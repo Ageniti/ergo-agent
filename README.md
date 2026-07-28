@@ -26,7 +26,7 @@ enterprise control plane extend well beyond that compatibility layer.
 | Concept | Meaning |
 |---|---|
 | **Runtime** | The shared Go execution engine: model loop, tools, sessions, delegation, MCP, and events |
-| **Agent** | A Markdown Profile declaring identity, role, tools, prompt, model defaults, and delegation policy |
+| **Agent** | A Markdown Profile declaring identity, role, tools, prompt, optional model routing, and delegation policy |
 | **Role** | The `main`, `sub`, or `meta` delegation boundary |
 | **Agent Package** | Declarative Agent resources installed into an existing Runtime |
 
@@ -66,6 +66,22 @@ Delegation is allowed only when all of these are true:
 
 Delegation is deny-by-default. `delegates: "*"` explicitly enables all visible
 role-compatible targets; package builds freeze it into exact names.
+
+### Model selection
+
+The Run or restored Session selects the default `provider` and `model`. Every
+built-in Main, Sub, and Meta Agent inherits that selection, including delegated
+calls:
+
+```text
+Run(model=gpt-5) → chief-agent → coding-agent → reviewer
+                     gpt-5          gpt-5         gpt-5
+```
+
+Custom Profiles may declare `provider` and `model` for intentional per-Agent
+routing. This remains an advanced opt-in for hosts that explicitly manage
+multiple Provider credentials, costs, and data-routing policies. The bundled
+Profiles leave both fields unset.
 
 ## Default Agent suite
 
@@ -235,8 +251,6 @@ role: sub
 tools: read, grep, find, ls, edit, write, subagent
 optional-tools: web_search
 delegates: reviewer, web-researcher
-provider: openai
-model: gpt-5
 thinking-level: high
 system-prompt: prompts/system/repository-agent.md
 ---
@@ -247,7 +261,9 @@ Complete the requested change and verify the result.
 
 `tools` is an exact capability allowlist. `optional-tools` supports graceful
 startup across hosts with different capabilities. `delegates` names Agent
-resource dependencies.
+resource dependencies. The Profile inherits the Run/Session model. Add
+`provider` and `model` only when the host intentionally routes this Agent to a
+different model.
 
 Profiles can be loaded from:
 
@@ -265,7 +281,7 @@ These resources have distinct jobs:
 
 | Resource | Purpose |
 |---|---|
-| Agent Profile | Identity, role, tools, model defaults, and delegation |
+| Agent Profile | Identity, role, tools, optional model routing, and delegation |
 | System prompt | Low-level Runtime behavior used by a Profile |
 | Prompt template | A reusable `/`-style user message for the active Agent |
 | Skill | Instructions loaded on demand |
