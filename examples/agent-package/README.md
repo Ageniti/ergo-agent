@@ -1,5 +1,7 @@
 # Declarative Agent Package
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 This directory is a minimal Pi-compatible resource package. It contains:
 
 ```text

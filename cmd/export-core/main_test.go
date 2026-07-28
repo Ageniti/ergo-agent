@@ -45,6 +45,13 @@ func TestExportCoreContainsOnlyCoreSource(t *testing.T) {
 	if strings.Contains(string(template), "system-prompt:") {
 		t.Fatalf("generated Agent template must use the built-in system prompt:\n%s", template)
 	}
+	readmeZH, err := os.ReadFile(filepath.Join(output, "README.zh-CN.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readmeZH), "纯 Go 执行 SDK") {
+		t.Fatalf("generated Chinese README has unexpected content:\n%s", readmeZH)
+	}
 	for _, forbidden := range []string{"prompts", "skills", "examples", "agent", "runner", "embed.go"} {
 		if _, err := os.Stat(filepath.Join(output, forbidden)); !os.IsNotExist(err) {
 			t.Fatalf("core export contains %s: %v", forbidden, err)

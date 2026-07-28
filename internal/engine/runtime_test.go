@@ -127,7 +127,7 @@ func TestNativeLoopUsesLocalPromptAndTool(t *testing.T) {
 	if provider.calls != 2 {
 		t.Fatalf("calls=%d", provider.calls)
 	}
-	if !strings.HasPrefix(provider.requests[0].System, "You are an expert coding assistant operating inside pi") {
+	if !strings.HasPrefix(provider.requests[0].System, "You are Ergo, an expert coding assistant operating inside the Ergo Agent Runtime") {
 		t.Fatalf("official prompt missing: %q", provider.requests[0].System)
 	}
 	if !hasTool(provider.requests[0].Tools, "todo") {
@@ -533,7 +533,7 @@ func TestPiBuiltInToolEdgeCompatibility(t *testing.T) {
 	}
 }
 
-func TestPiCodingSystemPromptGolden(t *testing.T) {
+func TestErgoCodingSystemPromptGolden(t *testing.T) {
 	root := t.TempDir()
 	config := t.TempDir()
 	t.Setenv("AGENT_CONFIG_DIR", config)
@@ -556,13 +556,13 @@ func TestPiCodingSystemPromptGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n" +
+	want := "You are Ergo, an expert coding assistant operating inside the Ergo Agent Runtime. You help users by reading files, executing commands, editing code, and writing new files.\n\n" +
 		"Available tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n\n" +
 		"In addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n" +
 		"- Use bash for file operations like ls, rg, find\n- Use read to examine files instead of cat or sed.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\n" +
-		"Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n" +
+		"Ergo documentation (read only when the user asks about Ergo itself, its SDK, architecture, extensions, skills, packages, or Pi compatibility):\n" +
 		"- Main documentation: " + filepath.Join(root, "docs", "PI-PARITY.md") + "\n- Additional docs: " + filepath.Join(root, "docs") + "\n- Examples: " + filepath.Join(root, "docs") + " (extensions, custom tools, SDK)\n" +
-		"- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: " + filepath.ToSlash(cwd) + "\n"
+		"- When reading Ergo docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- Relevant documents include ARCHITECTURE.md, AGENT-PACKAGES.md, STANDALONE-AGENTS.md, PROMPT-TEMPLATES.md, SECURITY.md, CONFORMANCE.md, and PI-PARITY.md\n- When working on Ergo topics, read the relevant docs and examples and follow Markdown cross-references before implementing\n- Always read the relevant Ergo Markdown files completely before making SDK or Runtime changes\nCurrent working directory: " + filepath.ToSlash(cwd) + "\n"
 	if got != want {
 		t.Fatalf("system prompt mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}
@@ -1389,7 +1389,7 @@ func TestPackagedAgentFailsFastWhenRequiredHostToolIsMissing(t *testing.T) {
 	}
 }
 
-func TestOfficialPiPromptBundleHashes(t *testing.T) {
+func TestCompatibilityPromptBundleHashes(t *testing.T) {
 	constants := map[string]string{
 		summarizationSystemPrompt:     "c464889dcfa60441e642f291445b49523f263e6fb2725d0c25075543a2ec3f8f",
 		summarizationPrompt:           "9b00aa68df1a64279bc36e9093367f638701d48ec82e3d08436f65092a515f9b",
@@ -1399,17 +1399,17 @@ func TestOfficialPiPromptBundleHashes(t *testing.T) {
 	}
 	for content, expected := range constants {
 		if actual := fmt.Sprintf("%x", sha256.Sum256([]byte(content))); actual != expected {
-			t.Fatalf("official prompt drift: got %s want %s", actual, expected)
+			t.Fatalf("compatibility prompt drift: got %s want %s", actual, expected)
 		}
 	}
 	root := filepath.Clean("../..")
 	files := map[string]string{
 		"prompts/modes/plan.md":         "cff2d719d55522d36372655ba8799a769580eac4959e98f1f2176890a81b88b7",
 		"prompts/modes/execute-plan.md": "93603921389656e88a39e4955e0953149c4db227d073699251b3e98b9b4df129",
-		"agents/scout.md":               "a5d584400a202a0ab630e1c2e0aa1d03cb0ad8f0e1152605e1ef798c15c18327",
-		"agents/planner.md":             "adf18af664e2043da97c44e2ed3ae87a71501d186f83b0dbd85045192160b7c7",
-		"agents/reviewer.md":            "fe7645e26ddce12ecc413bb4cbc87bd24d21b540482d9301f765c11a8a64301a",
-		"agents/worker.md":              "069c0858bfdad462a20f2d7644ac6428a23d814d87a35a8b923f2a900063e29b",
+		"agents/scout.md":               "daf3bfada6e46dde41800f606542b63cfedd6443da7967eb418e3df89df80986",
+		"agents/planner.md":             "207374e844f5ad2a4fa7f1aeb238cc462b0ba662b25595c03d3d0ec2c02c19ed",
+		"agents/reviewer.md":            "26e38e1d1d03c93136e5a02b8add4027b07dc9de8d23116b17c18c63046e957b",
+		"agents/worker.md":              "6602de4578d7ef315ba34c6da5f28fbac775851a4b8399106ab87bf684f91385",
 	}
 	for path, expected := range files {
 		data, err := os.ReadFile(filepath.Join(root, path))
@@ -1453,7 +1453,7 @@ func TestCustomAgentScopeAndModelProviderResolution(t *testing.T) {
 	}
 }
 
-func TestCustomAgentWithoutToolsUsesPiCodingDefaults(t *testing.T) {
+func TestCustomAgentWithoutToolsUsesCodingDefaults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "agent.md")
 	if err := os.WriteFile(path, []byte("---\nname: custom\ndescription: custom role\n---\nDo work"), 0644); err != nil {
 		t.Fatal(err)
@@ -1568,16 +1568,18 @@ func TestAgentRolesAndDelegationPolicy(t *testing.T) {
 	}
 }
 
-func TestProfileCanRunDirectlyWithItsOwnModelDefault(t *testing.T) {
+func TestBundledProfileInheritsRunModel(t *testing.T) {
 	provider := &captureProvider{}
 	factory := &captureFactory{provider: provider}
 	runtime := New(filepath.Clean("../.."))
 	runtime.Providers = factory
 	var started []string
 	err := runtime.Run(context.Background(), map[string]any{
-		"agentId": "scout",
-		"prompt":  "Inspect the repository.",
-		"cwd":     t.TempDir(),
+		"agentId":  "scout",
+		"prompt":   "Inspect the repository.",
+		"cwd":      t.TempDir(),
+		"provider": "openai",
+		"model":    "gpt-5",
 	}, nil, func(event Event) error {
 		if event.Type == "agent.agent_start" {
 			started = append(started, event.AgentID)
@@ -1587,14 +1589,41 @@ func TestProfileCanRunDirectlyWithItsOwnModelDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if factory.name != "anthropic" || provider.request.Model != "claude-haiku-4-5" {
-		t.Fatalf("profile defaults were not applied: provider=%q request=%+v", factory.name, provider.request)
+	if factory.name != "openai" || provider.request.Model != "gpt-5" {
+		t.Fatalf("run model was not inherited: provider=%q request=%+v", factory.name, provider.request)
 	}
 	if strings.Join(started, ",") != "scout" {
 		t.Fatalf("profile was not run directly: started=%v", started)
 	}
 	if !strings.Contains(provider.request.System, "You are a scout.") {
 		t.Fatalf("scout prompt missing: %q", provider.request.System)
+	}
+}
+
+func TestCustomProfileCanOptIntoModelDefault(t *testing.T) {
+	config := t.TempDir()
+	t.Setenv("AGENT_CONFIG_DIR", config)
+	if err := os.MkdirAll(filepath.Join(config, "agents"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	profile := "---\nname: routed-agent\ndescription: explicit model route\nrole: meta\nmodel: claude-sonnet-4-5\ntools: read\n---\nYou are a routed specialist."
+	if err := os.WriteFile(filepath.Join(config, "agents", "routed-agent.md"), []byte(profile), 0644); err != nil {
+		t.Fatal(err)
+	}
+	provider := &captureProvider{}
+	factory := &captureFactory{provider: provider}
+	runtime := New(filepath.Clean("../.."))
+	runtime.Providers = factory
+	err := runtime.Run(context.Background(), map[string]any{
+		"agentId": "routed-agent",
+		"prompt":  "Inspect the repository.",
+		"cwd":     t.TempDir(),
+	}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if factory.name != "anthropic" || provider.request.Model != "claude-sonnet-4-5" {
+		t.Fatalf("explicit profile route was not applied: provider=%q request=%+v", factory.name, provider.request)
 	}
 }
 
@@ -1789,6 +1818,27 @@ func TestRuntimeSubagentToolUsesProfileDelegateAllowlist(t *testing.T) {
 	messages := adversarial.requests[1].Messages
 	if len(messages) == 0 || !strings.Contains(messages[len(messages)-1].Content, "expected one of allowed-meta") {
 		t.Fatalf("blocked delegation result=%+v", messages)
+	}
+
+	inherited := &queuedProvider{responses: []Completion{
+		{ToolCalls: []ToolCall{{ID: "allowed-call", Name: "subagent", Arguments: json.RawMessage(`{"agent":"allowed-meta","task":"inspect"}`)}}},
+		{Text: "specialist result"},
+		{Text: "finished"},
+	}}
+	runtime = New(root)
+	runtime.Providers = fakeFactory{inherited}
+	if err := runtime.Run(context.Background(), map[string]any{
+		"agentId": "caller", "prompt": "Delegate.", "cwd": t.TempDir(), "provider": "openai", "model": "gpt-5",
+	}, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(inherited.requests) != 3 {
+		t.Fatalf("provider requests=%d", len(inherited.requests))
+	}
+	for index, request := range inherited.requests {
+		if request.Model != "gpt-5" {
+			t.Fatalf("request %d model=%q, want inherited gpt-5", index, request.Model)
+		}
 	}
 }
 

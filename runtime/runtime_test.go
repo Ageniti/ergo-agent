@@ -72,7 +72,7 @@ func TestNewFSUsesBuiltInSystemPromptWhenProfileDoesNotSpecifyOne(t *testing.T) 
 		t.Fatal(err)
 	}
 	for _, required := range []string{
-		"You are an expert coding assistant operating inside pi",
+		"You are Ergo, an expert coding assistant",
 		"Available tools:\n(none)",
 		"Follow the profile instructions.",
 		"Current working directory:",

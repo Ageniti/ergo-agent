@@ -28,6 +28,9 @@ func TestEveryBundledAgentBuildsAsAnIndependentPackage(t *testing.T) {
 	for _, definition := range definitions {
 		definition := definition
 		t.Run(definition.Name, func(t *testing.T) {
+			if definition.Provider != "" || definition.Model != "" {
+				t.Fatalf("bundled Agent %q pins provider/model: provider=%q model=%q", definition.Name, definition.Provider, definition.Model)
+			}
 			output := filepath.Join(parent, definition.Name)
 			result, err := resources.BuildAgentPackage(output, AgentPackageBuildOptions{EntryAgent: definition.Name})
 			if err != nil {
@@ -46,6 +49,11 @@ func TestEveryBundledAgentBuildsAsAnIndependentPackage(t *testing.T) {
 			}
 			if _, err := os.Stat(filepath.Join(output, "prompts", "system", definition.Name+".md")); err != nil {
 				t.Fatalf("packaged system prompt: %v", err)
+			}
+			for _, name := range []string{"README.md", "README.zh-CN.md"} {
+				if _, err := os.Stat(filepath.Join(output, name)); err != nil {
+					t.Fatalf("packaged documentation %s: %v", name, err)
+				}
 			}
 			for _, name := range []string{"LICENSE", "LICENSE-COMMERCIAL.md", "NOTICE"} {
 				if _, err := os.Stat(filepath.Join(output, name)); err != nil {

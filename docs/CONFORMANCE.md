@@ -1,5 +1,7 @@
 # Headless Pi Conformance Matrix
 
+[English](CONFORMANCE.md) | [简体中文](CONFORMANCE.zh-CN.md)
+
 Baseline: Pi `v0.81.1` / `20be4b18`. TUI rendering, themes, terminal editor,
 keybindings and interactive CLI setup are deliberately out of scope. Every
 other row requires a Go test before it can be marked complete.
@@ -23,7 +25,7 @@ Status meanings: `complete` = implemented and covered by Go conformance tests;
 | Provider | Bedrock Converse/stream, Mistral typed reasoning and Pi Messages | complete |
 | Provider | structured stream errors, terminal-event checks and cross-model signature isolation | complete |
 | Provider | model-aware API-key catalog, custom protocol config, registry and gateway-owned headers | complete |
-| Provider | usage/cache accounting and transport-specific retry（内置价格表按产品要求排除） | complete |
+| Provider | usage/cache accounting and transport-specific retry (the built-in pricing table is intentionally excluded by product scope) | complete |
 | Images | OpenRouter generation, Pi model capabilities, data URL outputs, errors and optional Agent tool | complete |
 | Session | tree entries, active leaf, labels, name and custom entries | complete |
 | Session | branch context, fork-before/fork-after | complete |
