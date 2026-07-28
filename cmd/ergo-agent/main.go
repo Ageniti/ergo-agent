@@ -243,8 +243,9 @@ go run . --provider openai --model gpt-5 "your task"
 The entry Agent is always selected explicitly as `+"`%s`"+`. Its initial tool
 allowlist is `+"`%s`"+`.
 
-Edit the profile to change role instructions, tools, model defaults, or
-delegation policy. Edit the system prompt to change the lower-level runtime
+Edit the profile to change role instructions, tools, optional model routing, or
+delegation policy. By default, this Agent and its delegates inherit the model
+selected for the Run. Edit the system prompt to change the lower-level runtime
 harness. A Meta Agent cannot delegate; a Sub Agent must declare both the
 `+"`subagent`"+` tool and exact `+"`delegates`"+` targets.
 
@@ -278,9 +279,10 @@ OPENAI_API_KEY=... go run . "你的任务"
 `+"```"+`
 
 入口 Agent 始终显式选择为 `+"`%s`"+`，初始工具白名单为 `+"`%s`"+`。
-编辑 Profile 可修改角色指令、工具、模型默认值或委派策略；编辑系统提示词可修改底层
-Runtime 约束。Meta Agent 不可委派；Sub Agent 必须同时声明 `+"`subagent`"+` 工具和
-精确的 `+"`delegates`"+`。
+编辑 Profile 可修改角色指令、工具、可选模型路由或委派策略。默认情况下，该 Agent
+及其 Delegate 继承本次 Run 选择的模型。编辑系统提示词可修改底层 Runtime 约束。
+Meta Agent 不可委派；Sub Agent 必须同时声明 `+"`subagent`"+` 工具和精确的
+`+"`delegates`"+`。
 
 `+"`resources/package.json`"+` 记录入口、依赖闭包及宿主必需/可选工具。添加依赖
 Agent 时必须同步这些字段。

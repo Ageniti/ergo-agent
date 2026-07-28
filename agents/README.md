@@ -18,8 +18,6 @@ description: Reviews a repository without modifying it
 role: meta
 tools: read, grep, find, ls
 optional-tools: web_search
-provider: openai
-model: gpt-5
 thinking-level: high
 system-prompt: prompts/system/coding-agent.md
 ---
@@ -37,9 +35,15 @@ Supported profile fields:
 | `tools` | Exact tool allowlist |
 | `optional-tools` | Allowed tools that may be absent from the host |
 | `delegates` | Exact Agent allowlist, or explicit `*` |
-| `provider` / `model` | Optional defaults for direct execution |
+| `provider` / `model` | Optional explicit model-routing override |
 | `thinking-level` | Optional default reasoning level |
 | `system-prompt` | Package-local or resource-root system prompt |
+
+The bundled Profiles omit `provider` and `model`. They inherit the model
+selected by the Run or restored Session, so Chief and every delegated Agent use
+one model by default. A custom Profile may set these fields for intentional
+per-Agent routing; use that advanced option when the host manages the required
+Provider credentials, cost policy, and data routing.
 
 ## Delegation policy
 

@@ -20,7 +20,7 @@ execute, or read `pi/` or `@earendil-works/*`.
 | Permission Gate | three official dangerous Bash-pattern classes, MCP annotations, and SHA-256 approvals |
 | subagent roles | unified semantics in `resource/profile.go`, with profiles declared by `agents/*.md` |
 | subagent single/parallel/chain | `internal/engine/tools.go`; role hierarchy, Profile `delegates` allowlists, limit 8, batches of 4, `{previous}`, and depth 4 |
-| custom roles/scopes | bundled `agents/`, `~/.pi/agent/agents`, and explicit project/both `.pi/agents`; YAML frontmatter, discovery by declared name, and per-role provider/model selection |
+| custom roles/scopes | bundled `agents/`, `~/.pi/agent/agents`, and explicit project/both `.pi/agents`; YAML frontmatter, discovery by declared name, shared Run/Session model inheritance, and optional explicit per-role routing |
 | skills/templates | `resource/resources.go` and session operations |
 | MCP tools/resources/templates/prompts | official MCP Go SDK; stdio and Streamable HTTP with sampling/elicitation bridges |
 | extension hooks/tools/commands | `internal/engine/extensions.go`; compile-time Go registration, headless event bus, command context, and typed hooks |

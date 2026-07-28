@@ -14,9 +14,14 @@
 | `tools` | 精确的工具白名单 |
 | `optional-tools` | 宿主可以不提供的可选工具 |
 | `delegates` | 精确 Agent 白名单，或显式的 `*` |
-| `provider` / `model` | 直接运行时的可选默认值 |
+| `provider` / `model` | 可选的显式模型路由覆盖 |
 | `thinking-level` | 可选默认推理等级 |
 | `system-prompt` | 包内或资源根目录中的系统提示词 |
+
+内置 Profile 都不声明 `provider` 和 `model`，默认继承本次 Run 或恢复 Session
+选择的模型，因此 Chief 与全部委派 Agent 默认使用同一个模型。自定义 Profile
+仍可通过这两个字段显式进行按 Agent 路由；建议只在宿主已经管理对应 Provider
+凭证、成本策略和数据流向时使用。
 
 ## 委派策略
 

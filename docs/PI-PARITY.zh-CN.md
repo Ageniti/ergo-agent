@@ -20,7 +20,7 @@ Ergo 借鉴了 Pi 的部分设计并选择性适配兼容行为。本文件映�
 | Permission Gate | Bash 三类官方危险模式 + MCP annotations + SHA-256 approval |
 | subagent roles | `resource/profile.go` 统一角色语义，`agents/*.md` 声明可选 profile |
 | subagent single/parallel/chain | `internal/engine/tools.go`；角色层级 + Profile `delegates` 白名单、8 个上限、4 个一批、`{previous}`、深度 4 |
-| custom roles / scope | bundled `agents/`、`~/.pi/agent/agents` 与显式 project/both `.pi/agents`；统一 YAML frontmatter、按声明 name 发现、角色 provider/model 切换 |
+| custom roles / scope | bundled `agents/`、`~/.pi/agent/agents` 与显式 project/both `.pi/agents`；统一 YAML frontmatter、按声明 name 发现、共享 Run/Session 模型继承，以及可选的显式按角色路由 |
 | Skills / templates | `resource/resources.go` 与 session operations |
 | MCP tools/resources/templates/prompts | 官方 MCP Go SDK，stdio + Streamable HTTP + sampling/elicitation bridge |
 | Extension hooks/tools/commands | `internal/engine/extensions.go`，Go 编译期注册、通用 headless event bus、command context、项目可信/资源/session/agent/provider/tool 强类型 hooks |
