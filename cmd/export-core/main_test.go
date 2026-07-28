@@ -33,6 +33,18 @@ func TestExportCoreContainsOnlyCoreSource(t *testing.T) {
 			t.Fatalf("generated README is missing %q:\n%s", required, readme)
 		}
 	}
+	template, err := os.ReadFile(filepath.Join(output, "agents", "template-agent.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"name: template-agent", "role: meta", "tools:", "Complete the user's task accurately."} {
+		if !strings.Contains(string(template), required) {
+			t.Fatalf("generated Agent template is missing %q:\n%s", required, template)
+		}
+	}
+	if strings.Contains(string(template), "system-prompt:") {
+		t.Fatalf("generated Agent template must use the built-in system prompt:\n%s", template)
+	}
 	readmeZH, err := os.ReadFile(filepath.Join(output, "README.zh-CN.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +52,7 @@ func TestExportCoreContainsOnlyCoreSource(t *testing.T) {
 	if !strings.Contains(string(readmeZH), "纯 Go 执行 SDK") {
 		t.Fatalf("generated Chinese README has unexpected content:\n%s", readmeZH)
 	}
-	for _, forbidden := range []string{"agents", "prompts", "skills", "examples", "agent", "runner", "embed.go"} {
+	for _, forbidden := range []string{"prompts", "skills", "examples", "agent", "runner", "embed.go"} {
 		if _, err := os.Stat(filepath.Join(output, forbidden)); !os.IsNotExist(err) {
 			t.Fatalf("core export contains %s: %v", forbidden, err)
 		}

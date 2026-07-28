@@ -3,8 +3,11 @@
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 These are the default prompts distributed by `ergo-agent`. They are auditable
-product resources and are not included in the generated `ergo-core` Module.
-A standalone Agent must supply its own system prompt.
+product resources and are not included as files in the generated `ergo-core`
+Module. The Core Runtime contains the same coding prompt as a built-in fallback:
+an Agent that omits `system-prompt` uses an application-owned
+`prompts/system/coding-agent.md` when present, then falls back to the built-in
+prompt. An explicitly configured prompt path must exist.
 
 ## Layout
 

@@ -87,6 +87,12 @@ func exportCore(sourceRoot, output string) error {
 			return err
 		}
 	}
+	if err := copyTransformedFile(
+		filepath.Join(sourceRoot, "templates", "agents", "template-agent.md"),
+		filepath.Join(staging, "agents", "template-agent.md"),
+	); err != nil {
+		return err
+	}
 	readme := `# Ergo Core
 
 [English](README.md) | [简体中文](README.zh-CN.md)
@@ -106,11 +112,12 @@ changes, and releases there. Do not edit this repository directly.
 - Agent execution loop, tools, sessions, compaction, MCP, and Extension API;
 - Provider adapters and model/image contracts;
 - Agent profile, prompt, Skill, and package loaders;
+- one starter Agent profile template that uses the built-in system prompt;
 - optional native Go integrations such as Bocha ` + "`web_search`" + `.
 
 ## What is excluded
 
-- Chief, Coding, and all default Agent profiles;
+- Chief, Coding, and all product Agent profiles;
 - default system prompts and bundled Skills;
 - CLI/application examples and the ECS/MySQL control plane;
 - JavaScript Extension loading.
@@ -158,11 +165,12 @@ Runtime 提供执行基础。
 - Agent 执行循环、工具、Session、压缩、MCP 与 Extension API；
 - Provider 适配器以及模型/图片契约；
 - Agent Profile、Prompt、Skill 和 Package 加载器；
+- 一份使用内建 System Prompt 的起始 Agent Profile 模板；
 - 博查 ` + "`web_search`" + ` 等可选原生 Go 集成。
 
 ## 不包含内容
 
-- Chief、Coding 等全部默认 Agent Profile；
+- Chief、Coding 等全部产品 Agent Profile；
 - 默认系统提示词和内置 Skill；
 - CLI、应用示例和 ECS/MySQL 控制面；
 - JavaScript Extension 加载。
