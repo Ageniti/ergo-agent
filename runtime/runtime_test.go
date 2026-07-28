@@ -49,3 +49,36 @@ func TestNewHasNoImplicitAgent(t *testing.T) {
 		t.Fatalf("minimal Runtime has default Agent %q", agentRuntime.DefaultAgentID)
 	}
 }
+
+func TestNewFSUsesBuiltInSystemPromptWhenProfileDoesNotSpecifyOne(t *testing.T) {
+	resourceFS := fstest.MapFS{
+		"agents/minimal.md": {
+			Data: []byte("---\nname: minimal\ndescription: Minimal test Agent\nrole: meta\ntools: read\n---\nFollow the profile instructions.\n"),
+		},
+	}
+
+	agentRuntime, err := NewFS(resourceFS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(agentRuntime.Resources.Root)
+
+	definition, err := agentRuntime.Resources.AgentAt("minimal", "", "user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	prompt, err := agentRuntime.Resources.BuildSystemPrompt(definition, t.TempDir(), nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"You are an expert coding assistant operating inside pi",
+		"Available tools:\n(none)",
+		"Follow the profile instructions.",
+		"Current working directory:",
+	} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("built-in system prompt is missing %q:\n%s", required, prompt)
+		}
+	}
+}

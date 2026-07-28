@@ -25,6 +25,27 @@ type PromptTemplate struct{ Name, Description, ArgumentHint, Body, Path string }
 
 type Resources struct{ Root string }
 
+const defaultCodingSystemPrompt = `You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.
+
+Available tools:
+{{TOOLS}}
+
+In addition to the tools above, you may have access to other custom tools depending on the project.
+
+Guidelines:
+{{GUIDELINES}}
+
+Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):
+- Main documentation: {{PI_README_PATH}}
+- Additional docs: {{PI_DOCS_PATH}}
+- Examples: {{PI_EXAMPLES_PATH}} (extensions, custom tools, SDK)
+- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory
+- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md)
+- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing
+- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details){{APPEND_SYSTEM_PROMPT}}{{PROJECT_CONTEXT}}{{SKILLS}}
+Current working directory: {{CWD}}
+`
+
 func (r Resources) Agent(name string) (Agent, error) {
 	return r.AgentAt(name, "", "user")
 }
@@ -555,10 +576,12 @@ func (r Resources) BuildSystemPromptTrusted(def AgentDefinition, cwd string, too
 
 func (r Resources) buildSystemPrompt(def AgentDefinition, cwd string, tools []ToolDefinition, planMode, projectTrusted bool, extraSkills []Skill) (string, error) {
 	path := def.SystemPrompt
+	usesDefault := path == ""
 	if path == "" {
 		// Pi subagent definitions are append-system-prompt files. When they do
 		// not explicitly replace the system prompt, they keep the full coding
-		// harness and append their role body.
+		// harness and append their role body. Prefer an application-owned
+		// override when present, otherwise use the Runtime's built-in harness.
 		path = "prompts/system/coding-agent.md"
 	}
 	if !filepath.IsAbs(path) {
@@ -593,7 +616,10 @@ func (r Resources) buildSystemPrompt(def AgentDefinition, cwd string, tools []To
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("read system prompt: %w", err)
+		if !usesDefault || !os.IsNotExist(err) {
+			return "", fmt.Errorf("read system prompt: %w", err)
+		}
+		data = []byte(defaultCodingSystemPrompt)
 	}
 	var lines []string
 	for _, tool := range tools {

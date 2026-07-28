@@ -87,6 +87,12 @@ func exportCore(sourceRoot, output string) error {
 			return err
 		}
 	}
+	if err := copyTransformedFile(
+		filepath.Join(sourceRoot, "templates", "agents", "template-agent.md"),
+		filepath.Join(staging, "agents", "template-agent.md"),
+	); err != nil {
+		return err
+	}
 	readme := `# Ergo Core
 
 Pure Go execution SDK for applications that ship their own Ergo Agents.
@@ -100,11 +106,12 @@ changes, and releases there. Do not edit this repository directly.
 - Agent execution loop, tools, sessions, compaction, MCP, and Extension API;
 - Provider adapters and model/image contracts;
 - Agent profile, prompt, Skill, and package loaders;
+- one starter Agent profile template that uses the built-in system prompt;
 - optional native Go integrations such as Bocha ` + "`web_search`" + `.
 
 ## What is excluded
 
-- Chief, Coding, and all default Agent profiles;
+- Chief, Coding, and all product Agent profiles;
 - default system prompts and bundled Skills;
 - CLI/application examples and the ECS/MySQL control plane;
 - JavaScript Extension loading.

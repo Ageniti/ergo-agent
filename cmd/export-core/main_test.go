@@ -33,7 +33,19 @@ func TestExportCoreContainsOnlyCoreSource(t *testing.T) {
 			t.Fatalf("generated README is missing %q:\n%s", required, readme)
 		}
 	}
-	for _, forbidden := range []string{"agents", "prompts", "skills", "examples", "agent", "runner", "embed.go"} {
+	template, err := os.ReadFile(filepath.Join(output, "agents", "template-agent.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"name: template-agent", "role: meta", "tools:", "Complete the user's task accurately."} {
+		if !strings.Contains(string(template), required) {
+			t.Fatalf("generated Agent template is missing %q:\n%s", required, template)
+		}
+	}
+	if strings.Contains(string(template), "system-prompt:") {
+		t.Fatalf("generated Agent template must use the built-in system prompt:\n%s", template)
+	}
+	for _, forbidden := range []string{"prompts", "skills", "examples", "agent", "runner", "embed.go"} {
 		if _, err := os.Stat(filepath.Join(output, forbidden)); !os.IsNotExist(err) {
 			t.Fatalf("core export contains %s: %v", forbidden, err)
 		}
